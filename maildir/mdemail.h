@@ -36,6 +36,9 @@ struct MdEmail
   char *canon_fname;
   bool header_parsed : 1;
   ino_t inode;
+  bool is_old : 1;
+  // MaildirEmailFlags flags;
+  // struct stat st; // XXX! 144 bytes
 };
 ARRAY_HEAD(MdEmailArray, struct MdEmail *);
 

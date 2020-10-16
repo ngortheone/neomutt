@@ -1,0 +1,243 @@
+mbox_open()
+	mda = list_emails() PROGRESS (count)
+		read_dir(cur) SIGINT
+			filename
+			realpath
+			flags
+			canon
+		read_dir(new) SIGINT
+	hcache_read(mda) SIGINT PROGRESS (%age)
+		C_HeaderCache
+		C_HeaderCacheBackend
+	maildir_populate(mda, C_MaildirHeaderCacheVerify) SIGINT PROGRESS (%age)
+	hcache_write(mda) SIGINT PROGRESS (%age)
+	apply_rules()
+		C_FlagSafe (frontend)
+	notify(populate)
+
+mbox_check_stats()
+	two modes:
+		check for new
+		update counts (count, unread, flagged, new)
+	check_dir(new)
+	C_MaildirCheckCur
+		check_dir(cur)
+
+check_dir
+	C_MailCheckRecent
+		stat(dir)
+	opendir()
+	readdir()
+		count flagged, seen
+check for SIGINT?
+don't zero stats, save elsewhere and overwrite on success
+
+mbox_check()
+
+mbox_sync()
+
+--------------------------------------------------------------------------------
+
+PROGRESS
+	scan
+		count all the files
+		message: Scanning: /path/to/dir (1234)
+		range: 1 - n (emails)
+
+	hcache read
+		search hcache for matches
+		message: Reading header cache (42%)
+		range: 0 - n (percent) -- number of matches vs total emails
+		progress: += 0.5
+
+	maildir read
+		parse headers of emails
+		message: Parsing email headers (72%)
+		range: n - 100 (percent) -- number of populated vs total emails
+		progress: += 1.0
+
+	hcache write
+		write back headers to hcache
+		message: Updating header cache (12%)
+		range: 0 - 100 (percent) -- based on number of missing emails
+		progress: += 0.5
+
+--------------------------------------------------------------------------------
+
+CHECK
+
+scan_dir() -> mda
+	canon filename
+	quick parse -> Email
+
+
+∀ mda hash lookup
+
+Compare
+
+NeoMutt		Filesystem	Result Set
+------------------------------------------------
+-		new		new
+
+deleted		deleted		deleted
+deleted		moved		changed
+deleted		none		-
+deleted		updated		conflict
+
+none		deleted		deleted
+none		moved		changed
+none		none		-
+none		updated		changed
+
+updated		deleted		conflict?
+updated		moved		changed
+updated		none		-
+updated		updated		conflict
+
+--------------------------------------------------------------------------------
+
+For `dir/file`
+
+| File   | File  | File  | File  | Dir   | Dir   | Dir   |
+| Change | Atime | Mtime | Ctime | Atime | Mtime | Ctime |
+| :----- | :---- | :---- | :---- | :---- | :---- | :---- |
+| Read   | Yes   | No    | No    | No    | No    | No    |
+| Touch  | Yes   | Yes   | Yes   | No    | No    | No    |
+| Rename | No    | No    | Yes   | Yes   | Yes   | Yes   |
+| Edit   | Yes   | Yes   | Yes   | No    | No    | No    |
+| Append | No    | Yes   | Yes   | No    | No    | No    |
+
+--------------------------------------------------------------------------------
+
+M->mtime vs fs stat(dir)
+M more recent, do nothing
+!changed -> accept all external
+changes && fs newer -> resolve
+new -> add
+del -> remove
+change -> update
+
+# Resolve
+
+we already have: flags, filename, size
+flags -> know if externally altered
+	(and which flags)
+size chagne -> invalidate all
+flags + changed -> we know *what* the *user* changed
+
+what's the diff between check() and sync() for maildir?
+	direction?
+check should adopt any changes (as early as possible)
+	before the user has a chance to change things
+
+frontend could tag conflicted emails
+	Accept / Reject changes?
+	(restore tags afterwards)
+or <limit> to conflicted
+	notify, then restore limit (and cursor)
+	add resolution config option: notify|auto
+		if nec
+
+--------------------------------------------------------------------------------
+
+On opening a Mailbox, user and fs are in sync
+stat(dir) -> mtime(dir) -> M.mtime
+filename -> flags and M.path, Mdata.canon
+
+user alters flags, no fs changes
+	check() does nothing
+
+user does nothing, fs altered
+	check() updates M
+
+new mail arrives
+	check() updates M
+
+user does nothing, fs deleted
+	check() updates M
+
+user changes + fs changes
+	dependent on which flags
+
+Replied
+	user replies or fs replies
+	=> set R
+
+Flagged
+	if user changed, use user.F
+	else if fs changed, use fs.F
+
+Trashed
+	if fs.T mark E.deleted
+	(allowing user to undelete)
+
+Deleted
+	if user changed, mark as conflicted
+	else update M (remove E)
+
+Seen
+	if user.S or fs.S set S
+
+Renaming
+	new -> cur => Old
+	or if ,S => Read
+
+--------------------------------------------------------------------------------
+
+Mailbox
+	pathbuf		/symlink/path/mailbox
+	realpath	/real/path/mailbox
+
+mbox_open()
+	my_scan_dir()
+		MdEmail
+		name = d_name
+		canon = canon(d_name)
+		inode = d_ino
+		flags |= MD_DIR_NEW/MD_DIR_CUR (new/cur)
+		flags |= MD_{FLAGS} (:2,SR)
+	mutt_hcache_open()
+		HeaderCache = hcache_open(mailbox_path(Mailbox))
+	my_hcache_read()
+		MdEmail.st = stat(file) // OPTIONAL
+		Email = hcache_fetch(MdEmail.canon)
+		Email.flags = MdEmail.flags (set individual flags)
+		edata.flags = MdEmail.flags (ignore cached values)
+	my_maildir_read()
+		Email = maildir_parse_message()
+		maildir_parse_stream()
+		fstat(fp)
+		Email.flags = MdEmail.flags (set individual flags)
+		edata.flags = MdEmail.flags
+	my_hcache_write()
+		hcache_store(Email)
+	maildir_move_to_mailbox()
+		Mailbox += Email
+
+--------------------------------------------------------------------------------
+
+mbox_check()
+	stat(new)  cf M.mtime          update
+	stat(cur)  cf Mdata.mtime_cur  update
+
+	if (new)  scan(new)  -> mda
+	if (cur)  scan(cur)  -> mda
+
+	my_scan_dir()
+		MdEmail
+		name = d_name
+		canon = canon(d_name)
+		inode = d_ino
+		flags |= MD_DIR_NEW/MD_DIR_CUR (new/cur)
+		flags |= MD_{FLAGS} (:2,SR)
+
+	hash(mda)
+
+	∀ Mailbox.emails[]
+		Email = emails[i]
+		MdEmail = hash_lookup(edata.canon)
+
+		base_flags = edata.flags
+		user_flags = fn(Email)
+		fs_flags = MdEmail.flags
+

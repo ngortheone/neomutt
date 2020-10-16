@@ -441,7 +441,7 @@ int log_disp_queue(time_t stamp, const char *file, int line,
 int log_disp_terminal(time_t stamp, const char *file, int line,
                       const char *function, enum LogLevel level, ...)
 {
-  if ((level < LL_PERROR) || (level > LL_MESSAGE))
+  if ((level < LL_PERROR) || (level > LL_NOTIFY))
     return 0;
 
   char buf[1024];
@@ -495,7 +495,8 @@ int log_disp_terminal(time_t stamp, const char *file, int line,
   if (colour > 0)
     ret += fprintf(fp, "\033[0m"); // Escape
 
-  ret += fprintf(fp, "\n");
+  if (level < LL_DEBUG1)
+    ret += fprintf(fp, "\n");
 
   return ret;
 }

@@ -131,12 +131,18 @@ static const char *get_mailbox_event(int id)
       return "add";
     case NT_MAILBOX_REMOVE:
       return "remove";
+    case NT_MAILBOX_CHANGED:
+      return "changed";
     case NT_MAILBOX_CLOSED:
       return "closed";
     case NT_MAILBOX_INVALID:
       return "invalid";
+    case NT_MAILBOX_POPULATE:
+      return "populate";
     case NT_MAILBOX_RESORT:
       return "resort";
+    case NT_MAILBOX_SWITCH:
+      return "switch";
     case NT_MAILBOX_UPDATE:
       return "update";
     case NT_MAILBOX_UNTAG:

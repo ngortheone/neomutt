@@ -86,9 +86,9 @@ int maildir_move_to_mailbox(struct Mailbox *m, struct MdEmailArray *mda)
   ARRAY_FOREACH(mdp, mda)
   {
     md = *mdp;
-    mutt_debug(LL_DEBUG2, "Considering %s\n", NONULL(md->canon_fname));
     if (!md->email)
       continue;
+    mutt_debug(LL_DEBUG2, "Considering %s\n", NONULL(md->email->path));
 
     mutt_debug(LL_DEBUG2, "Adding header structure. Flags: %s%s%s%s%s\n",
                md->email->flagged ? "f" : "", md->email->deleted ? "D" : "",

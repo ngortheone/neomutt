@@ -25,6 +25,17 @@
 
 struct Email;
 
+typedef uint8_t MaildirEmailFlags; ///< Flags for XXX, e.g. #MD_REPLIED
+#define MD_NO_FLAGS        0       ///< No flags are set
+#define MD_DIR_CUR   (1 << 0)      ///< XXX
+#define MD_DIR_NEW   (1 << 1)      ///< XXX
+#define MD_FLAGGED   (1 << 2)      ///< XXX
+#define MD_NEW       (1 << 3)      ///< XXX
+#define MD_OLD       (1 << 4)      ///< XXX
+#define MD_REPLIED   (1 << 5)      ///< XXX
+#define MD_SEEN      (1 << 6)      ///< XXX
+#define MD_TRASHED   (1 << 7)      ///< XXX
+
 /**
  * struct MaildirEmailData - Maildir-specific Email data - @extends Email
  *
@@ -32,7 +43,9 @@ struct Email;
  */
 struct MaildirEmailData
 {
-  char *maildir_flags; ///< Unknown Maildir flags
+  char *maildir_flags;     ///< Unknown Maildir flags
+  char *canon_fname;       ///< Canonical filename (no path, no flags)
+  MaildirEmailFlags flags; ///< XXX
 };
 
 void                     maildir_edata_free(void **ptr);

@@ -163,9 +163,10 @@ STAILQ_HEAD(MailboxList, MailboxNode);
  */
 enum NotifyMailbox
 {
-  NT_MAILBOX_ADD = 1, ///< A new Mailbox has been created
-  NT_MAILBOX_REMOVE,  ///< A Mailbox is about to be destroyed
-  NT_MAILBOX_CHANGED, ///< Mailbox data has changed
+  NT_MAILBOX_ADD = 1,  ///< A new Mailbox has been created
+  NT_MAILBOX_REMOVE,   ///< A Mailbox is about to be destroyed
+  NT_MAILBOX_CHANGED,  ///< Mailbox data has changed
+  NT_MAILBOX_POPULATE, ///< Mailbox has been populated for the first time
 
   /* These don't really belong here as they are tied to GUI operations.
    * Eventually, they'll be eliminated. */

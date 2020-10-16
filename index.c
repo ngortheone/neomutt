@@ -1742,8 +1742,19 @@ int mutt_index_menu(struct MuttWindow *dlg)
       case OP_SHOW_LOG_MESSAGES:
       {
 #ifdef USE_DEBUG_GRAPHVIZ
-        dump_graphviz("index");
+        // dump_graphviz("index");
 #endif
+        mutt_endwin();
+        struct Mailbox *m = Context->mailbox;
+        printf("pathbuf   = %s\n", mutt_b2s(&m->pathbuf));
+        printf("realpath  = %s\n", m->realpath);
+        printf("msg_count = %d\n", m->msg_count);
+        for (int i = 0; i < m->msg_count; i++)
+        {
+          printf("    %s\n", m->emails[i]->path);
+        }
+        mutt_exit(0);
+
         char tempfile[PATH_MAX];
         mutt_mktemp(tempfile, sizeof(tempfile));
 
@@ -3888,6 +3899,7 @@ int mutt_index_menu(struct MuttWindow *dlg)
         if (cur.e->attach_del)
           Context->mailbox->changed = true;
         menu->redraw = REDRAW_FULL;
+        dump_graphviz_email(cur.e, 0);
         break;
 
       case OP_END_COND:

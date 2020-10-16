@@ -42,6 +42,7 @@ void maildir_edata_free(void **ptr)
 
   struct MaildirEmailData *edata = *ptr;
   FREE(&edata->maildir_flags);
+  FREE(&edata->canon_fname);
 
   FREE(ptr);
 }
