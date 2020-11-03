@@ -237,7 +237,27 @@ mbox_check()
 		Email = emails[i]
 		MdEmail = hash_lookup(edata.canon)
 
+		!MdEmail // Externally deleted
+			Add to ARRAY(Deleted)
+			continue
+
 		base_flags = edata.flags
 		user_flags = fn(Email)
 		fs_flags = MdEmail.flags
+
+		if (fs_flags == base_flags) // NO External changes (quick shortcut)
+			continue
+
+		updated = false
+		updated |= process_renames(Email, base_flags, user_flags, fs_flags)
+		updated |= process_flagged(Email, base_flags, user_flags, fs_flags)
+		updated |= process_replied(Email, base_flags, user_flags, fs_flags)
+		updated |= process_seen   (Email, base_flags, user_flags, fs_flags)
+		updated |= process_trashed(Email, base_flags, user_flags, fs_flags)
+		if (updated)
+			Add to ARRAY(Changed)
+			continue
+
+	∀ Emails left in mda
+		Add to ARRAY(New)
 
