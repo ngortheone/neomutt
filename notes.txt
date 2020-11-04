@@ -70,7 +70,6 @@ scan_dir() -> mda
 	canon filename
 	quick parse -> Email
 
-
 ∀ mda hash lookup
 
 Compare
@@ -216,6 +215,8 @@ mbox_open()
 
 --------------------------------------------------------------------------------
 
+#define CHANGED(base,user,flag)  ((base & flag) != (user & flag))
+
 mbox_check()
 	stat(new)  cf M.mtime          update
 	stat(cur)  cf Mdata.mtime_cur  update
@@ -249,15 +250,146 @@ mbox_check()
 			continue
 
 		updated = false
-		updated |= process_renames(Email, base_flags, user_flags, fs_flags)
-		updated |= process_flagged(Email, base_flags, user_flags, fs_flags)
-		updated |= process_replied(Email, base_flags, user_flags, fs_flags)
-		updated |= process_seen   (Email, base_flags, user_flags, fs_flags)
-		updated |= process_trashed(Email, base_flags, user_flags, fs_flags)
+
+		updated |= check_renames(Email, base_flags, user_flags, fs_flags)
+			if (!CHANGED(base_flags, fs_flags, MD_DIR_NEW))
+				return false
+			retval = !CHANGED(base_flags, user_flags, MD_DIR_NEW)
+			base_flags &= !MD_DIR_NEW
+			base_flags |= (fs_flags & MD_DIR_NEW)
+			Email.path = MdEmail.rel_path
+
+			Email.[flags] = (fs_flags & MD_DIR_NEW), (user_flags & MD_SEEN)
+
+			Email.old
+			Email.read
+
+			return retval
+
+		updated |= check_flagged(Email, base_flags, user_flags, fs_flags)
+			if (!CHANGED(base_flags, fs_flags, MD_FLAGGED))	// NO external change
+				return false
+			retval = !CHANGED(base_flags, user_flags, MD_FLAGGED) // only changed externally
+			base_flags &= !MD_FLAGGED
+			base_flags |= (fs_flags & MD_FLAGGED)	// (re)set flag to match updated value
+			return retval
+
+		updated |= check_replied(Email, base_flags, user_flags, fs_flags)
+			if (!CHANGED(base_flags, fs_flags, MD_REPLIED))	// NO external change
+				return false
+			retval = !CHANGED(base_flags, user_flags, MD_REPLIED) // only changed externally
+			base_flags &= !MD_REPLIED
+			base_flags |= (fs_flags & MD_REPLIED)	// (re)set flag to match updated value
+			return retval
+
+		updated |= check_seen   (Email, base_flags, user_flags, fs_flags)
+			if (!CHANGED(base_flags, fs_flags, MD_SEEN))
+				return false
+
+			(MD_DIR_NEW && !MD_SEEN)	// New
+			(MD_DIR_NEW && MD_SEEN)		// Old
+			(!MD_DIR_NEW && !MD_SEEN)	// Old
+			(!MD_DIR_NEW && MD_SEEN)	// Read
+
+			Email.[flags] = (fs_flags & MD_DIR_NEW), (fs_flags & MD_SEEN)
+
+		updated |= check_trashed(Email, base_flags, user_flags, fs_flags)
+			if (!CHANGED(base_flags, fs_flags, MD_TRASHED))	// NO external change
+				return false
+			retval = !CHANGED(base_flags, user_flags, MD_TRASHED) // only changed externally
+			base_flags &= !MD_TRASHED
+			base_flags |= (fs_flags & MD_TRASHED)	// (re)set flag to match updated value
+			return retval
+
 		if (updated)
 			Add to ARRAY(Changed)
 			continue
 
 	∀ Emails left in mda
 		Add to ARRAY(New)
+
+	| Mark | Dir | Seen | Old | Read | Gui | Subject |
+	|------+-----+------+-----+------+-----+---------|
+	|      |     |      |     |      |     |         |
+	| 0    | new | .    | 0   | 0    | N   | AAA     |
+	| 0    | new | S    | 0   | 1    | .   | BBB     |
+	| 0    | cur | .    | 0   | 0    | N   | CCC     |
+	| 0    | cur | S    | 0   | 1    | .   | DDD     |
+	|      |     |      |     |      |     |         |
+	| 1    | new | .    | 0   | 0    | N   | EEE     |
+	| 1    | new | S    | 0   | 1    | .   | FFF     |
+	| 1    | cur | .    | 1   | 0    | O   | GGG     |
+	| 1    | cur | S    | 1   | 1    | .   | HHH     |
+	|      |     |      |     |      |     |         |
+
+old = (cur && mark_old)
+read = seen
+gui = (old => O) || (!read => 'N')
+
+mark_old = no
+
+	| Before/After | AAA      | BBB      | CCC      | DDD      |
+	|--------------+----------+----------+----------+----------|
+	| AAA          | .        | .        | new->cur | new->cur |
+	|              | .        | +Seen    | .        | +Seen    |
+	| Result       | .        | read=1   | .        | read=1   |
+	|--------------+----------+----------+----------+----------|
+	| BBB          | .        | .        | new->cur | new->cur |
+	|              | -Seen    | .        | -Seen    | .        |
+	| Result       | read=0   | .        | read=0   | .        |
+	|--------------+----------+----------+----------+----------|
+	| CCC          | cur->new | cur->new | .        | .        |
+	|              | .        | +Seen    | .        | +Seen    |
+	| Result       | .        | read=1   | .        | read=1   |
+	|--------------+----------+----------+----------+----------|
+	| DDD          | cur->new | cur->new | .        | .        |
+	|              | -Seen    | .        | -Seen    | .        |
+	| Result       | read=0   | .        | read=0   | .        |
+	|--------------+----------+----------+----------+----------|
+
+mark_old = yes
+
+	| Before/After | EEE          | FFF          | GGG          | HHH          |
+	|--------------+--------------+--------------+--------------+--------------|
+	| EEE          | .            | .            | new->cur     | new->cur     |
+	|              | .            | +Seen        | .            | +Seen        |
+	| Result       | .            | read=1       | old=1        | old=1,read=1 |
+	|--------------+--------------+--------------+--------------+--------------|
+	| FFF          | .            | .            | new->cur     | new->cur     |
+	|              | -Seen        | .            | -Seen        | .            |
+	| Result       | read=0       | .            | old=1,read=0 | old=1        |
+	|--------------+--------------+--------------+--------------+--------------|
+	| GGG          | cur->new     | cur->new     | .            | .            |
+	|              | .            | +Seen        | .            | +Seen        |
+	| Result       | old=0        | old=0,read=1 | .            | read=1       |
+	|--------------+--------------+--------------+--------------+--------------|
+	| HHH          | cur->new     | cur->new     | .            | .            |
+	|              | -Seen        | .            | -Seen        | .            |
+	| Result       | old=0,read=0 | old=0        | read=0       | .            |
+	|--------------+--------------+--------------+--------------+--------------|
+
+--------------------------------------------------------------------------------
+
+Results
+
+	if (mark_old)
+	{
+		if (cur->new)
+		{
+			old = 0
+		}
+		else if (new->cur)
+		{
+			old = 1
+		}
+	}
+
+	if (+Seen)
+	{
+		read = 1
+	}
+	else if (-Seen)
+	{
+		read = 0
+	}
 

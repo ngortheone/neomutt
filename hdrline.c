@@ -1044,6 +1044,7 @@ static const char *index_format_str(char *buf, size_t buflen, size_t col, int co
 
     case 's':
     {
+      mutt_debug(LL_DEBUG1, "mark=%d, old=%d, read=%d, subject=%s\n", C_MarkOld, e->old, e->read, e->env->subject);
       char *subj = NULL;
       if (e->env->disp_subj)
         subj = e->env->disp_subj;
