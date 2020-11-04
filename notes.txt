@@ -261,8 +261,11 @@ mbox_check()
 
 			Email.[flags] = (fs_flags & MD_DIR_NEW), (user_flags & MD_SEEN)
 
-			Email.old
-			Email.read
+			if (mark_old)
+				if (cur->new)
+					Email.old = false
+				else if (new->cur)
+					Email.old = true
 
 			return retval
 
@@ -285,13 +288,11 @@ mbox_check()
 		updated |= check_seen   (Email, base_flags, user_flags, fs_flags)
 			if (!CHANGED(base_flags, fs_flags, MD_SEEN))
 				return false
-
-			(MD_DIR_NEW && !MD_SEEN)	// New
-			(MD_DIR_NEW && MD_SEEN)		// Old
-			(!MD_DIR_NEW && !MD_SEEN)	// Old
-			(!MD_DIR_NEW && MD_SEEN)	// Read
-
-			Email.[flags] = (fs_flags & MD_DIR_NEW), (fs_flags & MD_SEEN)
+			if (base_flags & MD_SEEN)
+				Email.read = true
+			else
+				Email.read = false
+			return true
 
 		updated |= check_trashed(Email, base_flags, user_flags, fs_flags)
 			if (!CHANGED(base_flags, fs_flags, MD_TRASHED))	// NO external change
