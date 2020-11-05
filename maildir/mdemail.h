@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include "mutt/lib.h"
+#include "edata.h"
 
 /**
  * struct MdEmail - A Maildir Email helper
@@ -37,7 +38,8 @@ struct MdEmail
   bool header_parsed : 1;
   ino_t inode;
   bool is_old : 1;
-  // MaildirEmailFlags flags;
+  char *fname;
+  MaildirEmailFlags flags;
   // struct stat st; // XXX! 144 bytes
 };
 ARRAY_HEAD(MdEmailArray, struct MdEmail *);

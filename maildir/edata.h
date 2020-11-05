@@ -27,14 +27,14 @@ struct Email;
 
 typedef uint8_t MaildirEmailFlags; ///< Flags for XXX, e.g. #MD_REPLIED
 #define MD_NO_FLAGS        0       ///< No flags are set
-#define MD_DIR_CUR   (1 << 0)      ///< XXX
-#define MD_DIR_NEW   (1 << 1)      ///< XXX
-#define MD_FLAGGED   (1 << 2)      ///< XXX
-#define MD_NEW       (1 << 3)      ///< XXX
-#define MD_OLD       (1 << 4)      ///< XXX
-#define MD_REPLIED   (1 << 5)      ///< XXX
-#define MD_SEEN      (1 << 6)      ///< XXX
-#define MD_TRASHED   (1 << 7)      ///< XXX
+#define MD_DIR_CUR   (1 << 0)      ///< Email is in 'cur' directory
+#define MD_DIR_NEW   (1 << 1)      ///< Email is in 'new' directory
+#define MD_FLAGGED   (1 << 2)      ///< Email is flagged
+#define MD_NEW       (1 << 3)      ///< Email is new
+#define MD_OLD       (1 << 4)      ///< Email is old
+#define MD_REPLIED   (1 << 5)      ///< Email has been replied to
+#define MD_SEEN      (1 << 6)      ///< Email has been seen, but not read
+#define MD_TRASHED   (1 << 7)      ///< Email has Maildir 'trashed' flag set
 
 /**
  * struct MaildirEmailData - Maildir-specific Email data - @extends Email

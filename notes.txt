@@ -224,7 +224,7 @@ mbox_check()
 	if (new)  scan(new)  -> mda
 	if (cur)  scan(cur)  -> mda
 
-	my_scan_dir()
+	my_scan_dir() NO scan_dir() (new and/or cur)
 		MdEmail
 		name = d_name
 		canon = canon(d_name)
@@ -262,9 +262,9 @@ mbox_check()
 			Email.[flags] = (fs_flags & MD_DIR_NEW), (user_flags & MD_SEEN)
 
 			if (mark_old)
-				if (cur->new)
+				if (fs_flags & MD_DIR_NEW)
 					Email.old = false
-				else if (new->cur)
+				else if (fs_flags & MD_DIR_CUR)
 					Email.old = true
 
 			return retval

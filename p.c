@@ -44,6 +44,9 @@ const struct Mapping ComposeFields[] = { 0 };
 #define MMC_NEW_DIR (1 << 0) ///< 'new' directory changed
 #define MMC_CUR_DIR (1 << 1) ///< 'cur' directory changed
 
+///XXX flag has changed
+#define CHANGED(base,user,flag)  ((base & flag) != (user & flag))
+
 #define DIVIDER "--------------------------------------------------------------------------------\n"
 
 int nm_update_filename(struct Mailbox *m, const char *old_file, const char *new_file, struct Email *e)
@@ -211,7 +214,8 @@ static int scan_dir(struct MdEmailArray *mda, const char *dir, struct Progress *
     mutt_progress_update(progress, ARRAY_SIZE(mda) + 1, -1);
 
     struct MdEmail *entry = maildir_entry_new();
-    entry->canon_fname = strdup(de->d_name);
+    entry->fname = strdup(de->d_name);
+    entry->inode = de->d_ino;
     ARRAY_ADD(mda, entry);
     count++;
   }
@@ -262,7 +266,7 @@ int my_hcache_read(struct HeaderCache *hc, struct MdEmailArray *mda, struct Prog
 
     md = *mdp;
 
-    mutt_str_copy(key, md->canon_fname + 3, sizeof(key));
+    mutt_str_copy(key, md->fname + 3, sizeof(key));
     maildir_canon_filename2(key);
     mutt_debug(LL_DEBUG1, "    %s\n", key);
 
@@ -277,7 +281,7 @@ int my_hcache_read(struct HeaderCache *hc, struct MdEmailArray *mda, struct Prog
       hce.email->edata = maildir_edata_new();
       hce.email->edata_free = maildir_edata_free;
       hce.email->old = md->is_old;
-      hce.email->path = mutt_str_dup(md->canon_fname);
+      hce.email->path = mutt_str_dup(md->fname);
       md->email = hce.email;
       maildir_parse_flags(md->email, key);
       count++;
@@ -315,13 +319,13 @@ int my_maildir_read(struct Mailbox *m, struct MdEmailArray *mda, struct Progress
     if (md->email)
       continue;
 
-    snprintf(fn, sizeof(fn), "%s/%s", mailbox_path(m), md->canon_fname);
+    snprintf(fn, sizeof(fn), "%s/%s", mailbox_path(m), md->fname);
 
     struct Email *e = email_new();
     e->edata = maildir_edata_new();
     e->edata_free = maildir_edata_free;
     e->old = md->is_old;
-    e->path = mutt_str_dup(md->canon_fname);
+    e->path = mutt_str_dup(md->fname);
     if (maildir_parse_message(m->type, fn, md->is_old, e))
     {
       md->email = e;
@@ -396,9 +400,9 @@ int my_scan_dir(struct Mailbox *m, struct MdEmailArray *mda, struct Progress *pr
 
     sub_dir = md->is_old ? "cur" : "new";
 
-    mutt_str_asprintf(&rel_name, "%s/%s", sub_dir, md->canon_fname);
-    FREE(&md->canon_fname);
-    md->canon_fname = rel_name;
+    mutt_str_asprintf(&rel_name, "%s/%s", sub_dir, md->fname);
+    FREE(&md->fname);
+    md->fname = rel_name;
   }
 
   mutt_buffer_pool_release(&dir);
@@ -552,21 +556,83 @@ static int my_check_stats(struct Mailbox *m, int flags)
   return m->msg_new;
 }
 
+bool check_renames(struct Email *e, struct MdEmail *mde, MaildirEmailFlags *base_flags, MaildirEmailFlags *user_flags, MaildirEmailFlags *fs_flags, bool mark_old)
+{
+  if (!CHANGED(*base_flags, *fs_flags, MD_DIR_NEW))
+    return false;
+
+  bool retval = !CHANGED(*base_flags, *user_flags, MD_DIR_NEW);
+
+  *base_flags &= !MD_DIR_NEW;
+  *base_flags |= (*fs_flags & MD_DIR_NEW);
+
+  mutt_str_replace(&e->path, mde->fname); //WRONG need rel path
+
+  if (mark_old)
+  {
+    if (*fs_flags & MD_DIR_NEW)
+      e->old = false;
+    else if (*fs_flags & MD_DIR_CUR)
+      e->old = true;
+  }
+
+  return retval;
+}
+
+#if 0
+static bool check_flagged(struct Email *email, MaildirEmailFlags base_flags, MaildirEmailFlags user_flags, MaildirEmailFlags fs_flags)
+{
+  if (!CHANGED(base_flags, fs_flags, MD_FLAGGED)) // NO external change
+    return false
+  retval = !CHANGED(base_flags, user_flags, MD_FLAGGED) // only changed externally
+  base_flags &= !MD_FLAGGED
+  base_flags |= (fs_flags & MD_FLAGGED) // (re)set flag to match updated value
+  return retval
+  return false;
+}
+
+static bool check_replies(struct Email *email, MaildirEmailFlags base_flags, MaildirEmailFlags user_flags, MaildirEmailFlags fs_flags)
+{
+  if (!CHANGED(base_flags, fs_flags, MD_REPLIED)) // NO external change
+    return false
+  retval = !CHANGED(base_flags, user_flags, MD_REPLIED) // only changed externally
+  base_flags &= !MD_REPLIED
+  base_flags |= (fs_flags & MD_REPLIED) // (re)set flag to match updated value
+  return retval
+  return false;
+}
+
+static bool check_seen(struct Email *email, MaildirEmailFlags base_flags, MaildirEmailFlags user_flags, MaildirEmailFlags fs_flags)
+{
+  if (!CHANGED(base_flags, fs_flags, MD_SEEN))
+    return false
+  if (base_flags & MD_SEEN)
+    Email.read = true
+  else
+    Email.read = false
+  return true
+  return false;
+}
+
+static bool check_trashed(struct Email *email, MaildirEmailFlags base_flags, MaildirEmailFlags user_flags, MaildirEmailFlags fs_flags)
+{
+  if (!CHANGED(base_flags, fs_flags, MD_TRASHED)) // NO external change
+    return false
+  retval = !CHANGED(base_flags, user_flags, MD_TRASHED) // only changed externally
+  base_flags &= !MD_TRASHED
+  base_flags |= (fs_flags & MD_TRASHED) // (re)set flag to match updated value
+  return retval
+  return false;
+}
+
+#endif
 static int my_mbox_check(struct Mailbox *m)
 {
-  struct stat st_new;         /* status of the "new" subdirectory */
-  struct stat st_cur;         /* status of the "cur" subdirectory */
-  int changed = MMC_NO_DIRS;  /* which subdirectories have changed */
-  bool occult = false;        /* messages were removed from the mailbox */
-  int num_new = 0;            /* number of new messages added to the mailbox */
-  bool flags_changed = false; /* message flags were changed in the mailbox */
-  struct HashTable *fnames = NULL; /* hash table for quickly looking up the base filename
-                                 for a maildir message */
-  struct MaildirMboxData *mdata = maildir_mdata_get(m);
-
-  /* XXX seems like this check belongs in mx_mbox_check() rather than here.  */
   if (!C_CheckNew)
     return 0;
+
+  struct stat st_new; // stats for the "new" subdirectory
+  struct stat st_cur; // stats for the "cur" subdirectory
 
   struct Buffer *buf = mutt_buffer_pool_get();
   mutt_buffer_printf(buf, "%s/new", mailbox_path(m));
@@ -582,19 +648,57 @@ static int my_mbox_check(struct Mailbox *m)
     mutt_buffer_pool_release(&buf);
     return -1;
   }
+  mutt_buffer_pool_release(&buf);
+
+  struct MaildirMboxData *mdata = maildir_mdata_get(m);
 
   /* determine which subdirectories need to be scanned */
+  int changed = MMC_NO_DIRS;  /* which subdirectories have changed */
   if (mutt_file_stat_timespec_compare(&st_new, MUTT_STAT_MTIME, &m->mtime) > 0)
     changed = MMC_NEW_DIR;
   if (mutt_file_stat_timespec_compare(&st_cur, MUTT_STAT_MTIME, &mdata->mtime_cur) > 0)
     changed |= MMC_CUR_DIR;
 
   if (changed == MMC_NO_DIRS)
+    return 0; // nothing to do
+
+  struct MdEmailArray mda = ARRAY_HEAD_INITIALIZER;
+
+  struct Buffer *dir = mutt_buffer_pool_get();
+  if (changed & MMC_NEW_DIR)
   {
-    mutt_buffer_pool_release(&buf);
-    return 0; /* nothing to do */
+    mutt_buffer_printf(dir, "%s/new", mailbox_path(m));
+    int new_count = scan_dir(&mda, mutt_b2s(dir), NULL);
+    mutt_debug(LL_DEBUG1, "count = %d\n", new_count);
+
+    struct MdEmail **mdp = NULL;
+    ARRAY_FOREACH(mdp, &mda)
+    {
+      (*mdp)->flags |= MD_DIR_NEW;
+    }
   }
 
+  if (changed & MMC_CUR_DIR)
+  {
+    mutt_buffer_printf(dir, "%s/cur", mailbox_path(m));
+    int cur_count = scan_dir(&mda, mutt_b2s(dir), NULL);
+    mutt_debug(LL_DEBUG1, "count = %d\n", cur_count);
+
+    struct MdEmail **mdp = NULL;
+    ARRAY_FOREACH(mdp, &mda)
+    {
+      (*mdp)->flags |= MD_DIR_CUR;
+    }
+  }
+
+  mutt_buffer_pool_release(&dir);
+  // check_renames(e, mde, base_flags, user_flags, fs_flags, C_MarkOld);
+#if 0
+  bool occult = false;        /* messages were removed from the mailbox */
+  int num_new = 0;            /* number of new messages added to the mailbox */
+  bool flags_changed = false; /* message flags were changed in the mailbox */
+  struct HashTable *fnames = NULL; /* hash table for quickly looking up the base filename
+                                 for a maildir message */
   /* Update the modification times on the mailbox.
    *
    * The monitor code notices changes in the open mailbox too quickly.
@@ -630,8 +734,8 @@ static int my_mbox_check(struct Mailbox *m)
   {
     md = *mdp;
     maildir_canon_filename(buf, md->email->path);
-    md->canon_fname = mutt_buffer_strdup(buf);
-    mutt_hash_insert(fnames, md->canon_fname, md);
+    md->fname = mutt_buffer_strdup(buf);
+    mutt_hash_insert(fnames, md->fname, md);
   }
 
   /* check for modifications and adjust flags */
@@ -713,8 +817,6 @@ static int my_mbox_check(struct Mailbox *m)
     m->changed = true;
   }
 
-  mutt_buffer_pool_release(&buf);
-
   ARRAY_FREE(&mda);
   if (occult)
     return MUTT_REOPENED;
@@ -722,8 +824,10 @@ static int my_mbox_check(struct Mailbox *m)
     return MUTT_NEW_MAIL;
   if (flags_changed)
     return MUTT_FLAGS;
-  return 0;
+#endif
 
+  maildirarray_clear(&mda);
+  return 0;
 }
 
 int main(int argc, char *argv[])
@@ -733,8 +837,8 @@ int main(int argc, char *argv[])
 
   mutt_sig_init(my_signal_handler, NULL, NULL);
 
-  MuttLogger = log_disp_terminal;
-  // MuttLogger = log_disp_null;
+  // MuttLogger = log_disp_terminal;
+  MuttLogger = log_disp_null;
 
   C_HeaderCache = "/home/mutt/.cache/mutt/";
   C_HeaderCacheBackend = "lmdb";
