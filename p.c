@@ -580,6 +580,7 @@ bool check_renames(struct Email *e, struct MdEmail *mde, MaildirEmailFlags *base
 }
 
 #if 0
+
 static bool check_flagged(struct Email *email, MaildirEmailFlags base_flags, MaildirEmailFlags user_flags, MaildirEmailFlags fs_flags)
 {
   if (!CHANGED(base_flags, fs_flags, MD_FLAGGED)) // NO external change
@@ -626,6 +627,7 @@ static bool check_trashed(struct Email *email, MaildirEmailFlags base_flags, Mai
 }
 
 #endif
+
 static int my_mbox_check(struct Mailbox *m)
 {
   if (!C_CheckNew)

@@ -394,3 +394,15 @@ Results
 		read = 0
 	}
 
+--------------------------------------------------------------------------------
+
+on sync() who moves the file to the trash folder?
+	mx_mbox_sync()
+who does which tasks?
+what order?
+where does the hcache fit in?
+
+mx layer needs to move files to trash
+	fast vs slow move()
+
+could sync() do check(), then delegate moving-to-trash to mx layer?

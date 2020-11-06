@@ -92,7 +92,7 @@ int maildir_sync_message2(struct Mailbox *m, struct Email *e)
     mutt_buffer_printf(oldpath, "%s/%s", mailbox_path(m), e->path);
 
     if (mutt_str_equal(mutt_b2s(fullpath), mutt_b2s(oldpath)))
-      goto cleanup; /* message hasn't really changed */
+      goto cleanup; // message hasn't really changed
 
     /* record that the message is possibly marked as trashed on disk */
     e->trash = e->deleted;
@@ -195,7 +195,6 @@ int maildir_mbox_sync(struct Mailbox *m)
   maildir_update_mtime(m);
 
   /* adjust indices */
-
   if (m->msg_deleted)
   {
     for (int i = 0, j = 0; i < m->msg_count; i++)
