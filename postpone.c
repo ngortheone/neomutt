@@ -303,6 +303,20 @@ static struct Email *dlg_select_postponed_email(struct Context *ctx)
 }
 
 /**
+ * hardclose - try hard to close a mailbox
+ */
+static void hardclose(struct Context **pctx)
+{
+  /* messages might have been marked for deletion.
+   * try once more on reopen before giving up. */
+  enum MxCheckReturns rc = mx_mbox_close(pctx);
+  if (rc != MX_CHECK_ERROR && rc != MX_CHECK_NO_CHANGE)
+    rc = mx_mbox_close(pctx);
+  if (rc != MX_CHECK_NO_CHANGE)
+    mx_fastclose_mailbox((*pctx)->mailbox);
+}
+
+/**
  * mutt_get_postponed - Recall a postponed message
  * @param[in]  ctx     Context info, used when recalling a message to which we reply
  * @param[in]  hdr     envelope/attachment info for recalled message
@@ -320,7 +334,6 @@ int mutt_get_postponed(struct Context *ctx, struct Email *hdr,
 
   struct Email *e = NULL;
   int rc = SEND_POSTPONED;
-  int rc_close;
   const char *p = NULL;
   struct Context *ctx_post = NULL;
 
@@ -369,16 +382,12 @@ int mutt_get_postponed(struct Context *ctx, struct Email *hdr,
   else if (!(e = dlg_select_postponed_email(ctx_post)))
   {
     if (ctx_post == ctx)
+    {
       ctx_post = NULL;
+    }
     else
     {
-      /* messages might have been marked for deletion.
-       * try once more on reopen before giving up. */
-      rc_close = mx_mbox_close(&ctx_post);
-      if (rc_close > 0)
-        rc_close = mx_mbox_close(&ctx_post);
-      if (rc_close != 0)
-        mx_fastclose_mailbox(ctx_post->mailbox);
+      hardclose(&ctx_post);
     }
     return -1;
   }
@@ -404,14 +413,12 @@ int mutt_get_postponed(struct Context *ctx, struct Email *hdr,
   int opt_delete = C_Delete;
   C_Delete = MUTT_YES;
   if (ctx_post == ctx)
+  {
     ctx_post = NULL;
+  }
   else
   {
-    rc_close = mx_mbox_close(&ctx_post);
-    if (rc_close > 0)
-      rc_close = mx_mbox_close(&ctx_post);
-    if (rc_close != 0)
-      mx_fastclose_mailbox(ctx_post->mailbox);
+    hardclose(&ctx_post);
   }
   C_Delete = opt_delete;
 

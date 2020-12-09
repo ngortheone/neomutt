@@ -610,10 +610,7 @@ static int trash_append(struct Mailbox *m)
 /**
  * mx_mbox_close - Save changes and close mailbox
  * @param[out] ptr Mailbox
- * @retval #MUTT_REOPENED  mailbox has been externally modified
- * @retval #MUTT_NEW_MAIL  new mail has arrived
- * @retval  0 Success
- * @retval -1 Failure
+ * @return enum MxCheckReturns
  *
  * @note The flag retvals come from a call to a backend sync function
  *
@@ -626,14 +623,14 @@ static int trash_append(struct Mailbox *m)
  *       mx_fastclose_mailbox(), so for most of NeoMutt's code you won't see
  *       return value checks for temporary contexts.
  */
-int mx_mbox_close(struct Context **ptr)
+enum MxCheckReturns mx_mbox_close(struct Context **ptr)
 {
   if (!ptr || !*ptr)
-    return 0;
+    return MX_CHECK_NO_CHANGE;
 
   struct Context *ctx = *ptr;
   if (!ctx || !ctx->mailbox)
-    return -1;
+    return MX_CHECK_ERROR;
 
   struct Mailbox *m = ctx->mailbox;
 
@@ -648,7 +645,7 @@ int mx_mbox_close(struct Context **ptr)
   }
 
   int i, read_msgs = 0;
-  int rc = -1;
+  enum MxCheckReturns rc = MX_CHECK_ERROR;
   enum QuadOption move_messages = MUTT_NO;
   enum QuadOption purge = MUTT_YES;
   struct Buffer *mbox = NULL;
@@ -823,7 +820,7 @@ int mx_mbox_close(struct Context **ptr)
       mbox_reset_atime(m, NULL);
     mx_fastclose_mailbox(m);
     ctx_free(ptr);
-    rc = 0;
+    rc = MX_CHECK_NO_CHANGE;
     goto cleanup;
   }
 
@@ -839,8 +836,9 @@ int mx_mbox_close(struct Context **ptr)
   /* allow IMAP to preserve the deleted flag across sessions */
   if (m->type == MUTT_IMAP)
   {
-    int check = imap_sync_mailbox(ctx->mailbox, (purge != MUTT_NO), true);
-    if (check < 0)
+    const enum MxCheckReturns check =
+        imap_sync_mailbox(ctx->mailbox, (purge != MUTT_NO), true);
+    if (check == MX_CHECK_ERROR)
     {
       rc = check;
       goto cleanup;
@@ -865,8 +863,8 @@ int mx_mbox_close(struct Context **ptr)
 
     if (m->changed || (m->msg_deleted != 0))
     {
-      int check = sync_mailbox(ctx->mailbox);
-      if (check != 0)
+      enum MxCheckReturns check = sync_mailbox(ctx->mailbox);
+      if (check != MX_CHECK_NO_CHANGE)
       {
         rc = check;
         goto cleanup;
@@ -915,7 +913,7 @@ int mx_mbox_close(struct Context **ptr)
   mx_fastclose_mailbox(m);
   ctx_free(ptr);
 
-  rc = 0;
+  rc = MX_CHECK_NO_CHANGE;
 
 cleanup:
   mutt_buffer_pool_release(&mbox);
