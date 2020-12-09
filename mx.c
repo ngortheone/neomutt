@@ -1791,10 +1791,10 @@ int mx_ac_remove(struct Mailbox *m)
 /**
  * mx_mbox_check_stats - Check the statistics for a mailbox - Wrapper for MxOps::mbox_check_stats()
  */
-int mx_mbox_check_stats(struct Mailbox *m, int flags)
+enum MxCheckStatsReturns mx_mbox_check_stats(struct Mailbox *m, int flags)
 {
   if (!m)
-    return -1;
+    return MX_CHECK_ERROR;
 
   return m->mx_ops->mbox_check_stats(m, flags);
 }
