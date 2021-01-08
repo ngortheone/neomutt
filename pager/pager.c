@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <wchar.h>
+#include "private.h"
 #include "mutt/lib.h"
 #include "config/lib.h"
 #include "email/lib.h"

@@ -4171,12 +4171,14 @@ int mutt_dlgindex_observer(struct NotifyCallback *nc)
     struct MuttWindow *parent = win_pager->parent;
     if (parent->state.visible)
     {
+      const short c_pager_index_lines =
+          cs_subset_number(NeoMutt->sub, "pager_index_lines");
       int vcount = ctx_mailbox(Context) ? Context->mailbox->vcount : 0;
-      win_index->req_rows = MIN(C_PagerIndexLines, vcount);
+      win_index->req_rows = MIN(c_pager_index_lines, vcount);
       win_index->size = MUTT_WIN_SIZE_FIXED;
 
       win_index->parent->size = MUTT_WIN_SIZE_MINIMISE;
-      win_index->parent->state.visible = (C_PagerIndexLines != 0);
+      win_index->parent->state.visible = (c_pager_index_lines != 0);
     }
     else
     {

@@ -44,18 +44,6 @@ struct Context;
 struct Email;
 struct MuttWindow;
 
-/* These Config Variables are only used in pager.c */
-extern bool          C_AllowAnsi;
-extern bool          C_HeaderColorPartial;
-extern short         C_PagerContext;
-extern short         C_PagerIndexLines;
-extern bool          C_PagerStop;
-extern short         C_SearchContext;
-extern short         C_SkipQuotedOffset;
-extern bool          C_SmartWrap;
-extern struct Regex *C_Smileys;
-extern bool          C_Tilde;
-
 /**
  * struct Pager - An email being displayed
  */
