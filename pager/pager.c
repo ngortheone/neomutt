@@ -81,20 +81,6 @@
 #endif
 
 // clang-format off
-/* These Config Variables are only used in pager.c */
-bool          C_AllowAnsi;          ///< Config: Allow ANSI colour codes in rich text messages
-bool          C_HeaderColorPartial; ///< Config: Only colour the part of the header matching the regex
-short         C_PagerContext;       ///< Config: Number of lines of overlap when changing pages in the pager
-short         C_PagerIndexLines;    ///< Config: Number of index lines to display above the pager
-bool          C_PagerStop;          ///< Config: Don't automatically open the next message when at the end of a message
-short         C_SearchContext;      ///< Config: Context to display around search matches
-short         C_SkipQuotedOffset;   ///< Config: Lines of context to show when skipping quoted text
-bool          C_SmartWrap;          ///< Config: Wrap text at word boundaries
-struct Regex *C_Smileys;            ///< Config: Regex to match smileys to prevent mistakes when quoting text
-bool          C_Tilde;              ///< Config: Character to pad blank lines in the pager
-// clang-format on
-
-// clang-format off
 typedef uint8_t AnsiFlags;      ///< Flags, e.g. #ANSI_OFF
 #define ANSI_NO_FLAGS        0  ///< No flags are set
 #define ANSI_OFF       (1 << 0) ///< Turn off colours and attributes
