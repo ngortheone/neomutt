@@ -3,7 +3,7 @@
  * GUI display a file/email/help in a viewport with paging
  *
  * @authors
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 2020 Richard Russon <rich@flatcap.org>
  *
  * @copyright
  * This program is free software: you can redistribute it and/or modify it under
@@ -20,12 +20,28 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MUTT_PAGER_H
-#define MUTT_PAGER_H
+/**
+ * @page lib_pager PAGER: Display a file/email/help in a viewport with paging
+ *
+ * Display a file/email/help in a viewport with paging
+ *
+ * | File                | Description                |
+ * | :------------------ | :------------------------- |
+ * | pager/pager.c       | @subpage pager_pager       |
+ */
+
+#ifndef MUTT_PAGER_LIB_H
+#define MUTT_PAGER_LIB_H
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+
+struct AttachCtx;
+struct Body;
+struct Context;
+struct Email;
+struct MuttWindow;
 
 /* These Config Variables are only used in pager.c */
 extern bool          C_AllowAnsi;
@@ -38,6 +54,23 @@ extern short         C_SkipQuotedOffset;
 extern bool          C_SmartWrap;
 extern struct Regex *C_Smileys;
 extern bool          C_Tilde;
+
+/**
+ * struct Pager - An email being displayed
+ */
+struct Pager
+{
+  struct Context *ctx;    ///< Current mailbox
+  struct Email *email;    ///< Current message
+  struct Body *body;      ///< Current attachment
+  FILE *fp;               ///< Source stream
+  struct AttachCtx *actx; ///< Attachment information
+
+  struct MuttWindow *win_ibar;
+  struct MuttWindow *win_index;
+  struct MuttWindow *win_pbar;
+  struct MuttWindow *win_pager;
+};
 
 typedef uint16_t PagerFlags;              ///< Flags for mutt_pager(), e.g. #MUTT_SHOWFLAT
 #define MUTT_PAGER_NO_FLAGS         0     ///< No flags are set
@@ -59,26 +92,9 @@ typedef uint16_t PagerFlags;              ///< Flags for mutt_pager(), e.g. #MUT
 
 #define MUTT_DISPLAYFLAGS (MUTT_SHOW | MUTT_PAGER_NSKIP | MUTT_PAGER_MARKER | MUTT_PAGER_LOGS)
 
-/**
- * struct Pager - An email being displayed
- */
-struct Pager
-{
-  struct Context *ctx;    ///< Current mailbox
-  struct Email *email;    ///< Current message
-  struct Body *body;      ///< Current attachment
-  FILE *fp;               ///< Source stream
-  struct AttachCtx *actx; ///< Attachment information
-
-  struct MuttWindow *win_ibar;
-  struct MuttWindow *win_index;
-  struct MuttWindow *win_pbar;
-  struct MuttWindow *win_pager;
-};
-
-int mutt_pager(const char *banner, const char *fname, PagerFlags flags, struct Pager *extra);
 void mutt_buffer_strip_formatting(struct Buffer *dest, const char *src, bool strip_markers);
-
 void mutt_clear_pager_position(void);
+int  mutt_is_quote_line(char *buf, regmatch_t *pmatch);
+int  mutt_pager(const char *banner, const char *fname, PagerFlags flags, struct Pager *extra);
 
-#endif /* MUTT_PAGER_H */
+#endif /* MUTT_PAGER_LIB_H */

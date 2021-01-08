@@ -214,7 +214,7 @@ notmuch/db.c
 notmuch/notmuch.c
 opcodes.c
 opcodes.h
-pager.c
+pager/pager.c
 pattern/compile.c
 pattern/config.c
 pattern/dlgpattern.c

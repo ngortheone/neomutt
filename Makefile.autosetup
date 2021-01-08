@@ -71,7 +71,7 @@ NEOMUTTOBJS=	browser.o commands.o command_parse.o \
 		mutt_attach.o mutt_body.o mutt_commands.o mutt_config.o \
 		mutt_header.o mutt_history.o mutt_logging.o mutt_mailbox.o \
 		mutt_parse.o mutt_signal.o mutt_socket.o mutt_thread.o mx.o \
-		myvar.o opcodes.o pager.o postpone.o progress.o \
+		myvar.o opcodes.o postpone.o progress.o \
 		recvattach.o recvcmd.o resize.o rfc3676.o score.o \
 		sort.o state.o status.o system.o version.o
 
@@ -491,6 +491,19 @@ $(PWD)/notmuch:
 @endif
 
 ###############################################################################
+# libpager
+LIBPAGER=	libpager.a
+LIBPAGEROBJS=	pager/pager.o
+CLEANFILES+=	$(LIBPAGER) $(LIBPAGEROBJS)
+ALLOBJS+=	$(LIBPAGEROBJS)
+
+$(LIBPAGER): $(PWD)/pager $(LIBPAGEROBJS)
+	$(AR) cr $@ $(LIBPAGEROBJS)
+	$(RANLIB) $@
+$(PWD)/pager:
+	$(MKDIR_P) $(PWD)/pager
+
+###############################################################################
 # libpattern
 LIBPATTERN=	libpattern.a
 LIBPATTERNOBJS=	pattern/compile.o pattern/config.o pattern/dlgpattern.o \
@@ -610,10 +623,11 @@ $(ALLOBJS):
 # The order of these libraries depends on their dependencies.
 # The libraries with the most dependencies will come first.
 MUTTLIBS+=	$(LIBAUTOCRYPT) $(LIBPOP) $(LIBNNTP) $(LIBCOMPMBOX) \
-		$(LIBSTORE) $(LIBPATTERN) $(LIBGUI) $(LIBHELPBAR) $(LIBMBOX) \
-		$(LIBNOTMUCH) $(LIBMAILDIR) $(LIBNCRYPT) $(LIBIMAP) $(LIBCONN) \
-		$(LIBHCACHE)  $(LIBCOMPRESS) $(LIBSIDEBAR) $(LIBBCACHE) \
-		$(LIBHISTORY) $(LIBALIAS) $(LIBSEND) $(LIBCOMPOSE) $(LIBCORE) $(LIBCONFIG) \
+		$(LIBSTORE) $(LIBPATTERN) $(LIBGUI) $(LIBPAGER) $(LIBHELPBAR) \
+		$(LIBMBOX) $(LIBNOTMUCH) $(LIBMAILDIR) \
+		$(LIBNCRYPT) $(LIBIMAP) $(LIBCONN) $(LIBHCACHE) \
+		$(LIBCOMPRESS) $(LIBSIDEBAR) $(LIBBCACHE) $(LIBHISTORY) \
+		$(LIBALIAS) $(LIBSEND) $(LIBCOMPOSE) $(LIBCORE) $(LIBCONFIG) \
 		$(LIBEMAIL) $(LIBADDRESS) $(LIBDEBUG) $(LIBMUTT)
 
 # neomutt

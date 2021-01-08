@@ -22,7 +22,7 @@
  */
 
 /**
- * @page neo_pager GUI display a file/email/help in a viewport with paging
+ * @page pager_pager GUI display a file/email/help in a viewport with paging
  *
  * GUI display a file/email/help in a viewport with paging
  */
@@ -45,8 +45,8 @@
 #include "alias/lib.h"
 #include "gui/lib.h"
 #include "mutt.h"
-#include "pager.h"
 #include "ncrypt/lib.h"
+#include "pager/lib.h"
 #include "send/lib.h"
 #include "commands.h"
 #include "context.h"
