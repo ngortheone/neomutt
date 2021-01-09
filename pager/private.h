@@ -38,4 +38,9 @@ extern bool          C_SmartWrap;
 extern struct Regex *C_Smileys;
 extern bool          C_Tilde;
 
+int display_line(FILE *fp, LOFF_T *last_pos, struct Line **line_info, int n,
+                 int *last, int *max, PagerFlags flags,
+                 struct QClass **quote_list, int *q_level, bool *force_redraw,
+                 regex_t *search_re, struct MuttWindow *win_pager);
+
 #endif /* MUTT_PAGER_PRIVATE_H */
