@@ -541,7 +541,7 @@ static void menu_redraw_prompt(struct Menu *menu)
  * menu_check_recenter - Recentre the menu on screen
  * @param menu Current Menu
  */
-void menu_check_recenter(struct Menu *menu)
+MenuNotifyFlags menu_check_recenter(struct Menu *menu)
 {
   int c = MIN(C_MenuContext, (menu->pagelen / 2));
   int old_top = menu->top;
@@ -621,12 +621,12 @@ static void menu_jump(struct Menu *menu)
  * menu_next_line - Move the view down one line, keeping the selection the same
  * @param menu Current Menu
  */
-void menu_next_line(struct Menu *menu)
+MenuNotifyFlags menu_next_line(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
   int c = MIN(C_MenuContext, (menu->pagelen / 2));
@@ -648,12 +648,12 @@ void menu_next_line(struct Menu *menu)
  * menu_prev_line - Move the view up one line, keeping the selection the same
  * @param menu Current Menu
  */
-void menu_prev_line(struct Menu *menu)
+MenuNotifyFlags menu_prev_line(struct Menu *menu)
 {
   if (menu->top < 1)
   {
     mutt_message(_("You can't scroll up farther"));
-    return;
+    return MN_NO_FLAGS;
   }
 
   int c = MIN(C_MenuContext, (menu->pagelen / 2));
@@ -674,12 +674,12 @@ void menu_prev_line(struct Menu *menu)
  * * halfup:   jumplen == -pagelen/2
  * * halfdown: jumplen == pagelen/2
  */
-static void menu_length_jump(struct Menu *menu, int jumplen)
+static MenuNotifyFlags menu_length_jump(struct Menu *menu, int jumplen)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
   const int neg = (jumplen >= 0) ? 0 : -1;
@@ -723,170 +723,208 @@ static void menu_length_jump(struct Menu *menu, int jumplen)
  * menu_next_page - Move the focus to the next page in the menu
  * @param menu Current Menu
  */
-void menu_next_page(struct Menu *menu)
+MenuNotifyFlags menu_next_page(struct Menu *menu)
 {
-  menu_length_jump(menu, MAX(menu->pagelen /* - MenuOverlap */, 0));
+  return menu_length_jump(menu, MAX(menu->pagelen /* - MenuOverlap */, 0));
 }
 
 /**
  * menu_prev_page - Move the focus to the previous page in the menu
  * @param menu Current Menu
  */
-void menu_prev_page(struct Menu *menu)
+MenuNotifyFlags menu_prev_page(struct Menu *menu)
 {
-  menu_length_jump(menu, 0 - MAX(menu->pagelen /* - MenuOverlap */, 0));
+  return menu_length_jump(menu, 0 - MAX(menu->pagelen /* - MenuOverlap */, 0));
 }
 
 /**
  * menu_half_down - Move the focus down half a page in the menu
  * @param menu Current Menu
  */
-void menu_half_down(struct Menu *menu)
+MenuNotifyFlags menu_half_down(struct Menu *menu)
 {
-  menu_length_jump(menu, (menu->pagelen / 2));
+  return menu_length_jump(menu, (menu->pagelen / 2));
 }
 
 /**
  * menu_half_up - Move the focus up half a page in the menu
  * @param menu Current Menu
  */
-void menu_half_up(struct Menu *menu)
+MenuNotifyFlags menu_half_up(struct Menu *menu)
 {
-  menu_length_jump(menu, 0 - (menu->pagelen / 2));
+  return menu_length_jump(menu, 0 - (menu->pagelen / 2));
 }
 
 /**
  * menu_top_page - Move the focus to the top of the page
  * @param menu Current Menu
  */
-void menu_top_page(struct Menu *menu)
+MenuNotifyFlags menu_top_page(struct Menu *menu)
 {
   if (menu->current == menu->top)
-    return;
+    return MN_NO_FLAGS;
 
   menu->current = menu->top;
   menu->redraw = REDRAW_MOTION;
+  return MN_SELECTION;
 }
 
 /**
  * menu_bottom_page - Move the focus to the bottom of the page
  * @param menu Current Menu
  */
-void menu_bottom_page(struct Menu *menu)
+MenuNotifyFlags menu_bottom_page(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
-  menu->current = menu->top + menu->pagelen - 1;
-  if (menu->current > (menu->max - 1))
-    menu->current = menu->max - 1;
+  int i = menu->top + menu->pagelen - 1;
+  if (i > (menu->max - 1))
+    i = menu->max - 1;
+
+  if (menu->current == i)
+    return MN_NO_FLAGS;
+
+  menu->current = i;
   menu->redraw = REDRAW_MOTION;
+  return MN_SELECTION;
 }
 
 /**
  * menu_middle_page - Move the focus to the centre of the page
  * @param menu Current Menu
  */
-void menu_middle_page(struct Menu *menu)
+MenuNotifyFlags menu_middle_page(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
   int i = menu->top + menu->pagelen;
   if (i > (menu->max - 1))
     i = menu->max - 1;
-  menu->current = menu->top + (i - menu->top) / 2;
+
+  i = menu->top + (i - menu->top) / 2;
+
+  if (menu->current == i)
+    return MN_NO_FLAGS;
+
+  menu->current = i;
   menu->redraw = REDRAW_MOTION;
+  return MN_SELECTION;
 }
 
 /**
  * menu_first_entry - Move the focus to the first entry in the menu
  * @param menu Current Menu
  */
-void menu_first_entry(struct Menu *menu)
+MenuNotifyFlags menu_first_entry(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
+
+  if (menu->current == 0)
+    return MN_NO_FLAGS;
 
   menu->current = 0;
   menu->redraw = REDRAW_MOTION;
+  return MN_SELECTION | MN_VIEWPORT;
 }
 
 /**
  * menu_last_entry - Move the focus to the last entry in the menu
  * @param menu Current Menu
  */
-void menu_last_entry(struct Menu *menu)
+MenuNotifyFlags menu_last_entry(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
+
+  if (menu->current == (menu->max - 1))
+    return MN_NO_FLAGS;
 
   menu->current = menu->max - 1;
   menu->redraw = REDRAW_MOTION;
+  return MN_SELECTION | MN_VIEWPORT;
 }
 
 /**
  * menu_current_top - Move the current selection to the top of the window
  * @param menu Current Menu
  */
-void menu_current_top(struct Menu *menu)
+MenuNotifyFlags menu_current_top(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
   menu->top = menu->current;
+  if (menu->top == menu->current)
+    return MN_NO_FLAGS;
+
+  menu->top = menu->current;
   menu->redraw = REDRAW_INDEX;
+  return MN_VIEWPORT;
 }
 
 /**
  * menu_current_middle - Move the current selection to the centre of the window
  * @param menu Current Menu
  */
-void menu_current_middle(struct Menu *menu)
+MenuNotifyFlags menu_current_middle(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
-  menu->top = menu->current - (menu->pagelen / 2);
-  if (menu->top < 0)
-    menu->top = 0;
+  int i = menu->current - (menu->pagelen / 2);
+  if (i < 0)
+    i = 0;
+
+  if (menu->top == i)
+    return MN_NO_FLAGS;
+
+  menu->top = i;
   menu->redraw = REDRAW_INDEX;
+  return MN_VIEWPORT;
 }
 
 /**
  * menu_current_bottom - Move the current selection to the bottom of the window
  * @param menu Current Menu
  */
-void menu_current_bottom(struct Menu *menu)
+MenuNotifyFlags menu_current_bottom(struct Menu *menu)
 {
   if (menu->max == 0)
   {
     mutt_error(_("No entries"));
-    return;
+    return MN_NO_FLAGS;
   }
 
-  menu->top = menu->current - menu->pagelen + 1;
-  if (menu->top < 0)
-    menu->top = 0;
+  int i = menu->current - menu->pagelen + 1;
+  if (i < 0)
+    i = 0;
+  if (menu->top == i)
+    return MN_NO_FLAGS;
+
+  menu->top = i;
   menu->redraw = REDRAW_INDEX;
+  return MN_VIEWPORT;
 }
 
 /**
@@ -960,6 +998,7 @@ struct Menu *mutt_menu_new(enum MenuType type)
   menu->redraw = REDRAW_FULL;
   menu->color = default_color;
   menu->search = generic_search;
+  menu->notify = notify_new();
 
   return menu;
 }
@@ -974,6 +1013,10 @@ void mutt_menu_free(struct Menu **ptr)
     return;
 
   struct Menu *menu = *ptr;
+  struct EventMenu ev_menu = { menu };
+  notify_send(menu->notify, NT_MENU, NT_MENU_DELETE, &ev_menu);
+  notify_free(&menu->notify);
+
   char **line = NULL;
   ARRAY_FOREACH(line, &menu->dialog)
   {

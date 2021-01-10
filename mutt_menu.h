@@ -121,30 +121,36 @@ struct Menu
   void (*custom_redraw)(struct Menu *menu);
 
   void *redraw_data;
+  struct Notify *notify; ///< Notifications handler
 };
 
-void         menu_bottom_page(struct Menu *menu);
-void         menu_check_recenter(struct Menu *menu);
-void         menu_current_bottom(struct Menu *menu);
-void         menu_current_middle(struct Menu *menu);
-void         menu_current_top(struct Menu *menu);
-void         menu_first_entry(struct Menu *menu);
-void         menu_half_down(struct Menu *menu);
-void         menu_half_up(struct Menu *menu);
-void         menu_last_entry(struct Menu *menu);
-void         menu_middle_page(struct Menu *menu);
-void         menu_next_line(struct Menu *menu);
-void         menu_next_page(struct Menu *menu);
-void         menu_prev_line(struct Menu *menu);
-void         menu_prev_page(struct Menu *menu);
-void         menu_redraw_current(struct Menu *menu);
-void         menu_redraw_full(struct Menu *menu);
-void         menu_redraw_index(struct Menu *menu);
-void         menu_redraw_motion(struct Menu *menu);
-void         menu_redraw_status(struct Menu *menu);
-int          menu_redraw(struct Menu *menu);
-void         menu_top_page(struct Menu *menu);
-void         mutt_menu_add_dialog_row(struct Menu *menu, const char *row);
+typedef uint8_t MenuNotifyFlags; ///< Changes to a Menu
+#define MN_NO_FLAGS         0    ///< No flags are set
+#define MN_SELECTION  (1 << 0)   ///< Menu selection changed
+#define MN_VIEWPORT   (1 << 1)   ///< Menu viewport changed
+#define MN_SIZE       (1 << 2)   ///< Menu size changed
+
+/**
+ * enum NotifyMenu - Types of Menu Event
+ *
+ * Observers of #NT_MENU will be passed an #EventMenu.
+ */
+enum NotifyMenu
+{
+  NT_MENU_NEW = 1, ///< The Menu has been opened
+  NT_MENU_DELETE,  ///< The Menu is about to be destroyed
+  NT_MENU_STATE,   ///< Menu state has changed, e.g. #MN_SELECTION
+};
+
+/**
+ * struct EventMenu - An Event that happened to an Menu
+ */
+struct EventMenu
+{
+  struct Menu *menu; ///< The Menu this Event relates to
+};
+
+// Menu setup, etc
 void         mutt_menu_current_redraw(void);
 void         mutt_menu_free(struct Menu **ptr);
 void         mutt_menu_init(void);
@@ -152,10 +158,36 @@ int          mutt_menu_loop(struct Menu *menu);
 struct Menu *mutt_menu_new(enum MenuType type);
 void         mutt_menu_pop_current(struct Menu *menu);
 void         mutt_menu_push_current(struct Menu *menu);
+void         mutt_menu_add_dialog_row(struct Menu *menu, const char *row);
+
+// Menu redrawing
 void         mutt_menu_set_current_redraw_full(void);
 void         mutt_menu_set_current_redraw(MuttRedrawFlags redraw);
 void         mutt_menu_set_redraw_full(enum MenuType menu);
 void         mutt_menu_set_redraw(enum MenuType menu, MuttRedrawFlags redraw);
+void         menu_redraw_current(struct Menu *menu);
+void         menu_redraw_full(struct Menu *menu);
+void         menu_redraw_index(struct Menu *menu);
+void         menu_redraw_motion(struct Menu *menu);
+void         menu_redraw_status(struct Menu *menu);
+int          menu_redraw(struct Menu *menu);
+
+// Menu movement
+MenuNotifyFlags menu_bottom_page   (struct Menu *menu);
+MenuNotifyFlags menu_check_recenter(struct Menu *menu);
+MenuNotifyFlags menu_current_bottom(struct Menu *menu);
+MenuNotifyFlags menu_current_middle(struct Menu *menu);
+MenuNotifyFlags menu_current_top   (struct Menu *menu);
+MenuNotifyFlags menu_first_entry   (struct Menu *menu);
+MenuNotifyFlags menu_half_down     (struct Menu *menu);
+MenuNotifyFlags menu_half_up       (struct Menu *menu);
+MenuNotifyFlags menu_last_entry    (struct Menu *menu);
+MenuNotifyFlags menu_middle_page   (struct Menu *menu);
+MenuNotifyFlags menu_next_line     (struct Menu *menu);
+MenuNotifyFlags menu_next_page     (struct Menu *menu);
+MenuNotifyFlags menu_prev_line     (struct Menu *menu);
+MenuNotifyFlags menu_prev_page     (struct Menu *menu);
+MenuNotifyFlags menu_top_page      (struct Menu *menu);
 
 int mutt_menu_color_observer (struct NotifyCallback *nc);
 int mutt_menu_config_observer(struct NotifyCallback *nc);
