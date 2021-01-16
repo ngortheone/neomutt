@@ -107,6 +107,7 @@ struct ComposeRedrawData
 {
   struct Email *email;
   struct Buffer *fcc;
+  struct AttachCtx *actx;
 
   struct ListHead to_list;
   struct ListHead cc_list;
@@ -331,10 +332,9 @@ static void init_header_padding(void)
  */
 static void snd_make_entry(char *buf, size_t buflen, struct Menu *menu, int line)
 {
-  struct AttachCtx *actx = menu->mdata;
-
-  const struct ComposeRedrawData *rd = (const struct ComposeRedrawData *) menu->redraw_data;
+  const struct ComposeRedrawData *rd = menu->mdata;
   const struct ConfigSubset *sub = rd->sub;
+  const struct AttachCtx *actx = rd->actx;
 
   const char *c_attach_format = cs_subset_string(sub, "attach_format");
   mutt_expando_format(buf, buflen, 0, menu->win_index->state.cols, NONULL(c_attach_format),
@@ -1159,7 +1159,8 @@ static void mutt_update_compose_menu(struct AttachCtx *actx, struct Menu *menu, 
   {
     mutt_gen_compose_attach_list(actx, actx->email->body, -1, 0);
     mutt_attach_init(actx);
-    menu->mdata = actx;
+    struct ComposeRedrawData *rd = menu->mdata;
+    rd->actx = actx;
   }
 
   mutt_update_tree(actx);
@@ -1194,11 +1195,25 @@ static void update_idx(struct Menu *menu, struct AttachCtx *actx, struct AttachP
 }
 
 /**
+ * compose_attach_tag - Tag an attachment - Implements Menu::tag()
+ */
+int compose_attach_tag(struct Menu *menu, int sel, int act)
+{
+  struct ComposeRedrawData *rd = menu->mdata;
+  struct AttachCtx *actx = rd->actx;
+  struct Body *cur = actx->idx[actx->v2r[sel]]->body;
+  bool ot = cur->tagged;
+
+  cur->tagged = ((act >= 0) ? act : !cur->tagged);
+  return cur->tagged - ot;
+}
+
+/**
  * compose_custom_redraw - Redraw the compose menu - Implements Menu::custom_redraw()
  */
 static void compose_custom_redraw(struct Menu *menu)
 {
-  struct ComposeRedrawData *rd = menu->redraw_data;
+  struct ComposeRedrawData *rd = menu->mdata;
   if (!rd)
     return;
 
@@ -1282,12 +1297,12 @@ static void compose_attach_swap(struct Body *msg, struct AttachPtr **idx, short 
 static unsigned long cum_attachs_size(struct Menu *menu)
 {
   size_t s = 0;
-  struct AttachCtx *actx = menu->mdata;
-  struct AttachPtr **idx = actx->idx;
   struct Content *info = NULL;
   struct Body *b = NULL;
-  struct ComposeRedrawData *rd = (struct ComposeRedrawData *) menu->redraw_data;
+  struct ComposeRedrawData *rd = menu->mdata;
   struct ConfigSubset *sub = rd->sub;
+  struct AttachCtx *actx = rd->actx;
+  struct AttachPtr **idx = actx->idx;
 
   for (unsigned short i = 0; i < actx->idxlen; i++)
   {
@@ -1554,9 +1569,9 @@ int mutt_compose_menu(struct Email *e, struct Buffer *fcc, struct Email *e_cur,
   menu->win_ibar = ebar;
 
   menu->make_entry = snd_make_entry;
-  menu->tag = attach_tag;
+  menu->tag = compose_attach_tag;
   menu->custom_redraw = compose_custom_redraw;
-  menu->redraw_data = rd;
+  menu->mdata = rd;
   mutt_menu_push_current(menu);
 
   struct AttachCtx *actx = mutt_actx_new();
